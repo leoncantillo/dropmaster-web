@@ -79,7 +79,6 @@ export default function CatalogPage() {
                 <th className={headerCellClass}>P. Proveedor</th>
                 <th className={headerCellClass}>Utilidad</th>
                 <th className={headerCellClass}>Precio Catálogo</th>
-                <th className={headerCellClass}>PVP + Flete</th>
                 <th className={headerCellClass}>Disponible</th>
                 <th className={headerCellClass} aria-label="Acciones" />
               </tr>
@@ -101,9 +100,6 @@ export default function CatalogPage() {
                   </td>
                   <td className={cellClass}>
                     {formatCOP(product.pricing.suggestedSalePrice)}
-                  </td>
-                  <td className={cellClass}>
-                    {formatCOP(product.pricing.salePriceWithShipping)}
                   </td>
                   <td className={cellClass}>
                     <span
@@ -130,7 +126,7 @@ export default function CatalogPage() {
               {products.length === 0 && (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={7}
                     className="px-4 py-8 text-center text-sm text-slate-500"
                   >
                     No hay productos registrados.

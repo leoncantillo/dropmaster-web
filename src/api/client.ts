@@ -16,3 +16,17 @@ export interface ApiResponse<T> {
   success: boolean;
   data: T;
 }
+
+/**
+ * Extracts a human-readable message from a failed API request, falling back
+ * to the provided default when the backend did not return one.
+ */
+export function getErrorMessage(error: unknown, fallback: string): string {
+  const maybe = error as
+    | { response?: { data?: { message?: unknown } } }
+    | undefined;
+  const message = maybe?.response?.data?.message;
+  return typeof message === 'string' && message.length > 0
+    ? message
+    : fallback;
+}

@@ -1,6 +1,7 @@
 import { BrowserRouter, NavLink, Route, Routes } from 'react-router-dom';
 import CatalogPage from './pages/CatalogPage';
 import PricingPage from './pages/PricingPage';
+import OrdersPage from './pages/OrdersPage';
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `block rounded-md px-4 py-2 text-sm font-medium transition-colors ${
@@ -24,12 +25,16 @@ export default function App() {
             <NavLink to="/catalog" className={navLinkClass}>
               Catálogo
             </NavLink>
+            <NavLink to="/orders" className={navLinkClass}>
+              Órdenes
+            </NavLink>
           </nav>
         </aside>
         <main className="flex-1 overflow-x-auto p-8">
           <Routes>
             <Route path="/" element={<PricingPage />} />
             <Route path="/catalog" element={<CatalogPage />} />
+            <Route path="/orders" element={<OrdersPage />} />
           </Routes>
         </main>
       </div>

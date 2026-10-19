@@ -6,8 +6,6 @@ export interface ProductPricing {
   profitMarginTarget: number;
   calculatedProfit: number;
   suggestedSalePrice: number;
-  rlc: number;
-  salePriceWithShipping: number;
 }
 
 export interface ProductSupplier {

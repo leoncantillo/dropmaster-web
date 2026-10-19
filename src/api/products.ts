@@ -38,8 +38,18 @@ export interface CreateProductDTO {
   details?: string | null;
 }
 
-export async function listProducts(): Promise<Product[]> {
-  const res = await apiClient.get<ApiResponse<Product[]>>('/products');
+export interface ProductFilterParams {
+  search?: string;
+  supplierId?: string;
+  stockStatus?: 'all' | 'in_stock' | 'out_of_stock';
+}
+
+export async function listProducts(
+  params?: ProductFilterParams
+): Promise<Product[]> {
+  const res = await apiClient.get<ApiResponse<Product[]>>('/products', {
+    params,
+  });
   return res.data.data;
 }
 

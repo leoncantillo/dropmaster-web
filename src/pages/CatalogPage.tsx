@@ -1,35 +1,85 @@
 import { useEffect, useState } from 'react';
 import { listProducts, toggleStock } from '../api/products';
-import type { Product } from '../api/products';
+import type { Product, ProductFilterParams } from '../api/products';
+import { listSuppliers } from '../api/suppliers';
+import type { Supplier } from '../api/suppliers';
 import { formatCOP } from '../utils/format';
 import NewProductModal from '../components/NewProductModal';
 
 const headerCellClass =
   'px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500';
 const cellClass = 'px-4 py-3 text-sm text-slate-700';
+const inputClass =
+  'w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none';
+
+type StockStatus = ProductFilterParams['stockStatus'];
 
 export default function CatalogPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [search, setSearch] = useState('');
+  const [supplierId, setSupplierId] = useState('');
+  const [stockStatus, setStockStatus] = useState<StockStatus>('all');
   const [loading, setLoading] = useState(true);
+  const [filtering, setFiltering] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    listProducts()
+    listSuppliers()
       .then((items) => {
-        if (!cancelled) setProducts(items);
+        if (!cancelled) setSuppliers(items);
       })
       .catch(() => {
-        if (!cancelled) setError('No se pudo cargar el catálogo de productos.');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+        /* Si falla la carga de proveedores, el filtro queda con la opción por defecto. */
       });
     return () => {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const timer = setTimeout(() => {
+      setFiltering(true);
+      setError(null);
+      listProducts({
+        search: search.trim() || undefined,
+        supplierId: supplierId || undefined,
+        stockStatus,
+      })
+        .then((items) => {
+          if (!cancelled) setProducts(items);
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setError('No se pudieron cargar los productos.');
+          }
+        })
+        .finally(() => {
+          if (!cancelled) {
+            setFiltering(false);
+            setLoading(false);
+          }
+        });
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [search, supplierId, stockStatus]);
+
+  const filtersActive =
+    search.trim() !== '' || supplierId !== '' || stockStatus !== 'all';
+
+  function clearFilters() {
+    setSearch('');
+    setSupplierId('');
+    setStockStatus('all');
+  }
 
   async function handleToggleStock(productId: string) {
     try {
@@ -48,7 +98,7 @@ export default function CatalogPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold text-slate-900">
           Catálogo de Productos
         </h1>
@@ -59,6 +109,47 @@ export default function CatalogPage() {
         >
           + Nuevo Producto
         </button>
+      </div>
+
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar por nombre, ID Dropi o proveedor…"
+          className={`${inputClass} max-w-xs`}
+        />
+        <select
+          value={supplierId}
+          onChange={(e) => setSupplierId(e.target.value)}
+          className={`${inputClass} max-w-[12rem]`}
+        >
+          <option value="">Todos los proveedores</option>
+          {suppliers.map((supplier) => (
+            <option key={supplier.id} value={supplier.id}>
+              {supplier.name}
+            </option>
+          ))}
+        </select>
+        <select
+          value={stockStatus ?? 'all'}
+          onChange={(e) => setStockStatus(e.target.value as StockStatus)}
+          className={`${inputClass} max-w-[10rem]`}
+        >
+          <option value="all">Todos</option>
+          <option value="in_stock">Disponibles</option>
+          <option value="out_of_stock">Agotados</option>
+        </select>
+        {filtersActive && (
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Limpiar filtros
+          </button>
+        )}
+        {filtering && <span className="text-sm text-slate-500">Buscando…</span>}
       </div>
 
       {error && (
@@ -129,7 +220,23 @@ export default function CatalogPage() {
                     colSpan={7}
                     className="px-4 py-8 text-center text-sm text-slate-500"
                   >
-                    No hay productos registrados.
+                    {filtersActive ? (
+                      <div className="flex flex-col items-center gap-3">
+                        <p>
+                          No se encontraron productos con los filtros
+                          seleccionados.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={clearFilters}
+                          className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                        >
+                          Restablecer filtros
+                        </button>
+                      </div>
+                    ) : (
+                      <p>No hay productos registrados.</p>
+                    )}
                   </td>
                 </tr>
               )}

@@ -4,6 +4,7 @@ import { listSuppliers } from '../api/suppliers';
 import type { Supplier } from '../api/suppliers';
 import { createProduct } from '../api/products';
 import type { Product } from '../api/products';
+import NewSupplierModal from './NewSupplierModal';
 
 interface NewProductModalProps {
   onClose: () => void;
@@ -23,6 +24,7 @@ export default function NewProductModal({
   const [loadingSuppliers, setLoadingSuppliers] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [newSupplierOpen, setNewSupplierOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -43,6 +45,11 @@ export default function NewProductModal({
       cancelled = true;
     };
   }, []);
+
+  function handleSupplierCreated(supplier: Supplier) {
+    setSuppliers((prev) => [...prev, supplier]);
+    setSupplierId(supplier.id);
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -107,19 +114,28 @@ export default function NewProductModal({
             <label className="mb-1 block text-sm font-medium text-slate-700">
               Proveedor
             </label>
-            <select
-              value={supplierId}
-              onChange={(e) => setSupplierId(e.target.value)}
-              className={inputClass}
-              required
-            >
-              {loadingSuppliers && <option value="">Cargando…</option>}
-              {suppliers.map((supplier) => (
-                <option key={supplier.id} value={supplier.id}>
-                  {supplier.name}
-                </option>
-              ))}
-            </select>
+            <div className="flex items-center gap-2">
+              <select
+                value={supplierId}
+                onChange={(e) => setSupplierId(e.target.value)}
+                className={`${inputClass} min-w-0 flex-1`}
+                required
+              >
+                {loadingSuppliers && <option value="">Cargando…</option>}
+                {suppliers.map((supplier) => (
+                  <option key={supplier.id} value={supplier.id}>
+                    {supplier.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => setNewSupplierOpen(true)}
+                className="whitespace-nowrap rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                + Nuevo
+              </button>
+            </div>
           </div>
 
           <div>
@@ -192,6 +208,15 @@ export default function NewProductModal({
           </div>
         </form>
       </div>
+
+      {newSupplierOpen && (
+        <div onClick={(e) => e.stopPropagation()}>
+          <NewSupplierModal
+            onClose={() => setNewSupplierOpen(false)}
+            onSuccess={handleSupplierCreated}
+          />
+        </div>
+      )}
     </div>
   );
 }

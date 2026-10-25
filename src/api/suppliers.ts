@@ -5,12 +5,32 @@ export interface Supplier {
   id: string;
   name: string;
   contactInfo: string | null;
+  notes?: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
-export async function listSuppliers(): Promise<Supplier[]> {
-  const res = await apiClient.get<ApiResponse<Supplier[]>>('/suppliers');
+export interface CreateSupplierInput {
+  name: string;
+  contactInfo?: string | null;
+  notes?: string | null;
+  isActive?: boolean;
+}
+
+export async function listSuppliers(
+  includeInactive?: boolean
+): Promise<Supplier[]> {
+  const params = includeInactive ? { includeInactive: true } : undefined;
+  const res = await apiClient.get<ApiResponse<Supplier[]>>('/suppliers', {
+    params,
+  });
+  return res.data.data;
+}
+
+export async function createSupplier(
+  input: CreateSupplierInput
+): Promise<Supplier> {
+  const res = await apiClient.post<ApiResponse<Supplier>>('/suppliers', input);
   return res.data.data;
 }

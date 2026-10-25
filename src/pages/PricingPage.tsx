@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { getPricingConfig, updatePricingConfig } from '../api/pricing';
-import type { PricingConfig } from '../api/pricing';
-import { formatCOP, formatPercent } from '../utils/format';
 
 /** Converts a decimal API value to the percentage shown in the UI. */
 function toPercent(decimal: number): string {
@@ -10,9 +8,7 @@ function toPercent(decimal: number): string {
 }
 
 export default function PricingPage() {
-  const [config, setConfig] = useState<PricingConfig | null>(null);
   const [profitMargin, setProfitMargin] = useState('');
-  const [shippingCost, setShippingCost] = useState('');
   const [returnRate, setReturnRate] = useState('');
   const [currency, setCurrency] = useState('');
   const [loading, setLoading] = useState(true);
@@ -25,9 +21,7 @@ export default function PricingPage() {
     getPricingConfig()
       .then((cfg) => {
         if (cancelled) return;
-        setConfig(cfg);
         setProfitMargin(toPercent(cfg.profitMarginTarget));
-        setShippingCost(String(cfg.averageShippingCost));
         setReturnRate(toPercent(cfg.returnRate));
         setCurrency(cfg.currency);
       })
@@ -50,15 +44,10 @@ export default function PricingPage() {
     setSuccess(false);
 
     const margin = Number(profitMargin);
-    const shipping = Number(shippingCost);
     const ret = Number(returnRate);
 
     if (!Number.isFinite(margin) || margin < 0) {
       setError('El margen de utilidad debe ser un número mayor o igual a 0.');
-      return;
-    }
-    if (!Number.isFinite(shipping) || shipping < 0) {
-      setError('El costo promedio de flete debe ser un número mayor o igual a 0.');
       return;
     }
     if (!Number.isFinite(ret) || ret < 0 || ret >= 100) {
@@ -72,13 +61,11 @@ export default function PricingPage() {
 
     setSaving(true);
     try {
-      const updated = await updatePricingConfig({
+      await updatePricingConfig({
         profitMarginTarget: margin / 100,
-        averageShippingCost: shipping,
         returnRate: ret / 100,
         currency: currency.trim(),
       });
-      setConfig(updated);
       setSuccess(true);
     } catch {
       setError('No se pudo guardar la configuración. Intenta nuevamente.');
@@ -147,20 +134,6 @@ export default function PricingPage() {
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">
-              Costo promedio de flete (COP)
-            </label>
-            <input
-              type="number"
-              min="0"
-              step="1000"
-              value={shippingCost}
-              onChange={(e) => setShippingCost(e.target.value)}
-              className={inputClass}
-              required
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
               Moneda
             </label>
             <input
@@ -173,20 +146,7 @@ export default function PricingPage() {
           </div>
         </div>
 
-        <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-5">
-          <div className="text-sm text-slate-600">
-            <span className="font-medium text-slate-700">
-              RLC (Real Logistic Cost):
-            </span>{' '}
-            <span className="font-semibold text-slate-900">
-              {config ? formatCOP(config.rlc) : '—'}
-            </span>
-            <span className="mt-1 block text-xs text-slate-500">
-              Margen {config ? formatPercent(config.profitMarginTarget * 100) : '—'}
-              {' · '}
-              Retorno {config ? formatPercent(config.returnRate * 100) : '—'}
-            </span>
-          </div>
+        <div className="mt-6 flex justify-end border-t border-slate-100 pt-5">
           <button
             type="submit"
             disabled={saving}

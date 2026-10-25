@@ -44,6 +44,14 @@ export interface ProductFilterParams {
   stockStatus?: 'all' | 'in_stock' | 'out_of_stock';
 }
 
+export interface UpdateProductDTO {
+  supplierId?: string;
+  name?: string;
+  supplierPrice?: number;
+  dropiId?: string | null;
+  details?: string | null;
+}
+
 export async function listProducts(
   params?: ProductFilterParams
 ): Promise<Product[]> {
@@ -63,4 +71,19 @@ export async function toggleStock(productId: string): Promise<Product> {
     `/products/${productId}/toggle-stock`
   );
   return res.data.data;
+}
+
+export async function updateProduct(
+  productId: string,
+  dto: UpdateProductDTO
+): Promise<Product> {
+  const res = await apiClient.put<ApiResponse<Product>>(
+    `/products/${productId}`,
+    dto
+  );
+  return res.data.data;
+}
+
+export async function deleteProduct(productId: string): Promise<void> {
+  await apiClient.delete<ApiResponse<void>>(`/products/${productId}`);
 }

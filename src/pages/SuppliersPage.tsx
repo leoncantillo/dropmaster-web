@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
-import { listSuppliers } from '../api/suppliers';
+import { deleteSupplier, listSuppliers } from '../api/suppliers';
 import type { Supplier } from '../api/suppliers';
 import { getErrorMessage } from '../api/client';
 import NewSupplierModal from '../components/NewSupplierModal';
+import EditSupplierModal from '../components/EditSupplierModal';
+import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 
 const headerCellClass =
   'px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500';
@@ -30,6 +32,8 @@ export default function SuppliersPage() {
   const [error, setError] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
   const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<Supplier | null>(null);
+  const [deleting, setDeleting] = useState<Supplier | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -61,6 +65,23 @@ export default function SuppliersPage() {
     if (includeInactive || supplier.isActive) {
       setSuppliers((prev) => [supplier, ...prev]);
     }
+  }
+
+  function handleSupplierUpdated(supplier: Supplier) {
+    setSuppliers((prev) => {
+      if (!includeInactive && !supplier.isActive) {
+        return prev.filter((item) => item.id !== supplier.id);
+      }
+      return prev.map((item) =>
+        item.id === supplier.id ? supplier : item
+      );
+    });
+  }
+
+  async function handleDeleteSupplier() {
+    if (!deleting) return;
+    await deleteSupplier(deleting.id);
+    setSuppliers((prev) => prev.filter((item) => item.id !== deleting.id));
   }
 
   function handleIncludeInactiveChange(value: boolean) {
@@ -125,6 +146,7 @@ export default function SuppliersPage() {
                 <th className={headerCellClass}>Notas</th>
                 <th className={headerCellClass}>Estado</th>
                 <th className={headerCellClass}>Fecha de Registro</th>
+                <th className={headerCellClass} aria-label="Acciones" />
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -151,12 +173,30 @@ export default function SuppliersPage() {
                   <td className={cellClass}>
                     {formatDateTime(supplier.createdAt)}
                   </td>
+                  <td className={`${cellClass} text-right`}>
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditing(supplier)}
+                        className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeleting(supplier)}
+                        className="rounded-md border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
               {suppliers.length === 0 && (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="px-4 py-8 text-center text-sm text-slate-500"
                   >
                     <div className="flex flex-col items-center gap-3">
@@ -185,6 +225,31 @@ export default function SuppliersPage() {
         <NewSupplierModal
           onClose={() => setModalOpen(false)}
           onSuccess={handleSupplierCreated}
+        />
+      )}
+
+      {editing && (
+        <EditSupplierModal
+          supplier={editing}
+          onClose={() => setEditing(null)}
+          onSuccess={handleSupplierUpdated}
+        />
+      )}
+
+      {deleting && (
+        <ConfirmDeleteModal
+          title="Eliminar Proveedor"
+          message={
+            <>
+              ¿Eliminar el proveedor{' '}
+              <span className="font-medium text-slate-900">
+                {deleting.name}
+              </span>
+              ? Esta acción no se puede deshacer.
+            </>
+          }
+          onClose={() => setDeleting(null)}
+          onConfirm={handleDeleteSupplier}
         />
       )}
     </div>

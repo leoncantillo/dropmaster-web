@@ -146,14 +146,28 @@ export default function PricingPage() {
           </div>
         </div>
 
-        <div className="mt-6 flex justify-end border-t border-slate-100 pt-5">
-          <button
-            type="submit"
-            disabled={saving}
-            className="rounded-md bg-slate-900 px-5 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {saving ? 'Guardando…' : 'Guardar'}
-          </button>
+        <div className="mt-6 border-t border-slate-100 pt-5">
+          <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+            <span className="font-medium text-slate-700">
+              Fórmula del precio sugerido:
+            </span>{' '}
+            <span className="font-mono text-slate-900">
+              PVP = (Costo × (1 + Margen)) / (1 − Tasa de retorno)
+            </span>
+            <span className="mt-1 block text-xs text-slate-500">
+              La tasa de retorno se absorbe en el precio de catálogo; no se
+              aplica un flete promedio global.
+            </span>
+          </div>
+          <div className="mt-4 flex justify-end">
+            <button
+              type="submit"
+              disabled={saving}
+              className="rounded-md bg-slate-900 px-5 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {saving ? 'Guardando…' : 'Guardar'}
+            </button>
+          </div>
         </div>
       </form>
     </div>

@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
-import { listProducts, toggleStock } from '../api/products';
+import { deleteProduct, listProducts, toggleStock } from '../api/products';
 import type { Product, ProductFilterParams } from '../api/products';
 import { listSuppliers } from '../api/suppliers';
 import type { Supplier } from '../api/suppliers';
 import { formatCOP } from '../utils/format';
 import NewProductModal from '../components/NewProductModal';
+import EditProductModal from '../components/EditProductModal';
+import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 
 const headerCellClass =
   'px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500';
@@ -24,6 +26,8 @@ export default function CatalogPage() {
   const [filtering, setFiltering] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<Product | null>(null);
+  const [deleting, setDeleting] = useState<Product | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -94,6 +98,18 @@ export default function CatalogPage() {
 
   function handleProductCreated(product: Product) {
     setProducts((prev) => [product, ...prev]);
+  }
+
+  function handleProductUpdated(product: Product) {
+    setProducts((prev) =>
+      prev.map((item) => (item.id === product.id ? product : item))
+    );
+  }
+
+  async function handleDeleteProduct() {
+    if (!deleting) return;
+    await deleteProduct(deleting.id);
+    setProducts((prev) => prev.filter((item) => item.id !== deleting.id));
   }
 
   return (
@@ -204,13 +220,29 @@ export default function CatalogPage() {
                     </span>
                   </td>
                   <td className={`${cellClass} text-right`}>
-                    <button
-                      type="button"
-                      onClick={() => handleToggleStock(product.id)}
-                      className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                    >
-                      Alternar Stock
-                    </button>
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleStock(product.id)}
+                        className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                      >
+                        Alternar Stock
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditing(product)}
+                        className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeleting(product)}
+                        className="rounded-md border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -249,6 +281,32 @@ export default function CatalogPage() {
         <NewProductModal
           onClose={() => setModalOpen(false)}
           onSuccess={handleProductCreated}
+        />
+      )}
+
+      {editing && (
+        <EditProductModal
+          product={editing}
+          suppliers={suppliers}
+          onClose={() => setEditing(null)}
+          onSuccess={handleProductUpdated}
+        />
+      )}
+
+      {deleting && (
+        <ConfirmDeleteModal
+          title="Eliminar Producto"
+          message={
+            <>
+              ¿Eliminar el producto{' '}
+              <span className="font-medium text-slate-900">
+                {deleting.name}
+              </span>
+              ? Esta acción no se puede deshacer.
+            </>
+          }
+          onClose={() => setDeleting(null)}
+          onConfirm={handleDeleteProduct}
         />
       )}
     </div>

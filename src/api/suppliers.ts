@@ -18,6 +18,13 @@ export interface CreateSupplierInput {
   isActive?: boolean;
 }
 
+export interface UpdateSupplierInput {
+  name?: string;
+  contactInfo?: string | null;
+  notes?: string | null;
+  isActive?: boolean;
+}
+
 export async function listSuppliers(
   includeInactive?: boolean
 ): Promise<Supplier[]> {
@@ -33,4 +40,19 @@ export async function createSupplier(
 ): Promise<Supplier> {
   const res = await apiClient.post<ApiResponse<Supplier>>('/suppliers', input);
   return res.data.data;
+}
+
+export async function updateSupplier(
+  id: string,
+  input: UpdateSupplierInput
+): Promise<Supplier> {
+  const res = await apiClient.put<ApiResponse<Supplier>>(
+    `/suppliers/${id}`,
+    input
+  );
+  return res.data.data;
+}
+
+export async function deleteSupplier(id: string): Promise<void> {
+  await apiClient.delete<ApiResponse<void>>(`/suppliers/${id}`);
 }

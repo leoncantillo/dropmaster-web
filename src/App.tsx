@@ -1,4 +1,5 @@
-import { BrowserRouter, NavLink, Route, Routes } from 'react-router-dom';
+import { DropiConnectButton } from './components/DropiConnectButton';
+
 import CatalogPage from './pages/CatalogPage';
 import PricingPage from './pages/PricingPage';
 import OrdersPage from './pages/OrdersPage';
@@ -19,7 +20,9 @@ export default function App() {
           <div className="px-6 py-6 text-lg font-semibold text-white">
             Dropmaster
           </div>
+          <DropiConnectButton />
           <nav className="flex flex-col gap-1 px-3">
+
             <NavLink to="/" end className={navLinkClass}>
               Pricing
             </NavLink>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { deleteOrder, listOrders } from '../api/orders';
+import { DropiConnectButton } from '../components/DropiConnectButton';
 import type { Order } from '../api/orders';
 import { getErrorMessage } from '../api/client';
 import { formatCOP, formatPercent } from '../utils/format';
@@ -85,7 +86,7 @@ export default function OrdersPage() {
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold text-slate-900">Órdenes</h1>
+        <DropiConnectButton />
         <button
           type="button"
           onClick={() => setNewOpen(true)}

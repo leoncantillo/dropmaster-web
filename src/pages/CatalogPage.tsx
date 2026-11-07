@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { deleteProduct, listProducts, toggleStock } from '../api/products';
+import { deleteProduct, listProducts, syncAllProductsStock, syncProductStock, toggleStock } from '../api/products';
 import type { Product, ProductFilterParams } from '../api/products';
 import { listSuppliers } from '../api/suppliers';
 import type { Supplier } from '../api/suppliers';
@@ -28,6 +28,10 @@ export default function CatalogPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [deleting, setDeleting] = useState<Product | null>(null);
+  const [syncingProductId, setSyncingProductId] = useState<string | null>(null);
+  const [syncingAll, setSyncingAll] = useState(false);
+  const [syncNotice, setSyncNotice] = useState<string | null>(null);
+  const [stockAlertOpen, setStockAlertOpen] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -96,6 +100,34 @@ export default function CatalogPage() {
     }
   }
 
+  async function handleSyncProduct(productId: string) {
+    setSyncingProductId(productId);
+    setError(null);
+    try {
+      const updated = await syncProductStock(productId);
+      setProducts((prev) => prev.map((item) => item.id === updated.id ? updated : item));
+    } catch {
+      setError('No se pudo sincronizar el stock del producto con Dropi.');
+    } finally {
+      setSyncingProductId(null);
+    }
+  }
+
+  async function handleSyncAll() {
+    setSyncingAll(true);
+    setError(null);
+    try {
+      const summary = await syncAllProductsStock();
+      setSyncNotice(`Inventario actualizado: ${summary.updatedCount - summary.lowStockCount - summary.outOfStockCount} disponibles, ${summary.lowStockCount} con stock bajo, ${summary.outOfStockCount} agotados`);
+      const items = await listProducts({ search: search.trim() || undefined, supplierId: supplierId || undefined, stockStatus });
+      setProducts(items);
+    } catch {
+      setError('No se pudo sincronizar el inventario con Dropi.');
+    } finally {
+      setSyncingAll(false);
+    }
+  }
+
   function handleProductCreated(product: Product) {
     setProducts((prev) => [product, ...prev]);
   }
@@ -112,20 +144,46 @@ export default function CatalogPage() {
     setProducts((prev) => prev.filter((item) => item.id !== deleting.id));
   }
 
+  const criticalProducts = products.filter((product) => product.stockQuantity < 5 || !product.inStock);
+
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold text-slate-900">
           Catálogo de Productos
         </h1>
-        <button
-          type="button"
-          onClick={() => setModalOpen(true)}
-          className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
-        >
-          + Nuevo Producto
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={handleSyncAll}
+            disabled={syncingAll}
+            className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {syncingAll ? 'Sincronizando…' : 'Sincronizar Stock con Dropi'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setModalOpen(true)}
+            className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
+          >
+            + Nuevo Producto
+          </button>
+        </div>
       </div>
+
+      {syncNotice && (
+        <div className="mb-4 flex items-center justify-between rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          <span>{syncNotice}</span>
+          <button type="button" onClick={() => setSyncNotice(null)} className="font-medium">Cerrar</button>
+        </div>
+      )}
+
+      {stockAlertOpen && criticalProducts.length > 0 && (
+        <div className="mb-4 flex items-center justify-between rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <span>{criticalProducts.length} producto{criticalProducts.length === 1 ? '' : 's'} requiere{criticalProducts.length === 1 ? '' : 'n'} atención por stock bajo o agotado.</span>
+          <button type="button" onClick={() => setStockAlertOpen(false)} className="font-medium">Ocultar</button>
+        </div>
+      )}
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <input
@@ -210,17 +268,33 @@ export default function CatalogPage() {
                   </td>
                   <td className={cellClass}>
                     <span
-                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                        product.inStock
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-slate-100 text-slate-600'
+                      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${
+                        product.stockQuantity <= 0 || !product.inStock
+                          ? 'bg-red-100 text-red-800 border-red-200'
+                          : product.stockQuantity < 5
+                            ? 'bg-amber-100 text-amber-800 border-amber-200'
+                            : 'bg-emerald-100 text-emerald-800 border-emerald-200'
                       }`}
                     >
-                      {product.inStock ? 'Disponible' : 'Agotado'}
+                      {product.stockQuantity <= 0 || !product.inStock
+                        ? 'Agotado (0)'
+                        : product.stockQuantity < 5
+                          ? `Stock Bajo (${product.stockQuantity})`
+                          : `Disponible (${product.stockQuantity})`}
                     </span>
                   </td>
                   <td className={`${cellClass} text-right`}>
                     <div className="flex justify-end gap-2">
+                      {product.dropiId && (
+                        <button
+                          type="button"
+                          onClick={() => handleSyncProduct(product.id)}
+                          disabled={syncingProductId === product.id}
+                          className="rounded-md border border-sky-300 px-3 py-1.5 text-xs font-medium text-sky-700 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {syncingProductId === product.id ? 'Sincronizando…' : 'Sync Dropi'}
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => handleToggleStock(product.id)}

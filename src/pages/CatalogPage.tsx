@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { deleteProduct, listProducts, syncAllProductsStock, syncProductStock, toggleStock } from '../api/products';
 import type { Product, ProductFilterParams } from '../api/products';
 import { listSuppliers } from '../api/suppliers';
@@ -32,6 +32,19 @@ export default function CatalogPage() {
   const [syncingAll, setSyncingAll] = useState(false);
   const [syncNotice, setSyncNotice] = useState<string | null>(null);
   const [stockAlertOpen, setStockAlertOpen] = useState(true);
+  const [expandedProductIds, setExpandedProductIds] = useState<Set<string>>(new Set());
+
+  function toggleExpandProduct(id: string) {
+    setExpandedProductIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -239,6 +252,7 @@ export default function CatalogPage() {
           <table className="min-w-full divide-y divide-slate-200">
             <thead className="bg-slate-50">
               <tr>
+                <th className="w-10 px-4 py-3" aria-label="Expandir" />
                 <th className={headerCellClass}>Nombre</th>
                 <th className={headerCellClass}>Proveedor</th>
                 <th className={headerCellClass}>P. Proveedor</th>
@@ -249,81 +263,182 @@ export default function CatalogPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {products.map((product) => (
-                <tr key={product.id} className="hover:bg-slate-50">
-                  <td className={`${cellClass} font-medium text-slate-900`}>
-                    {product.name}
-                  </td>
-                  <td className={cellClass}>
-                    {product.supplier?.name ?? '—'}
-                  </td>
-                  <td className={cellClass}>
-                    {formatCOP(product.supplierPrice)}
-                  </td>
-                  <td className={cellClass}>
-                    {formatCOP(product.pricing.calculatedProfit)}
-                  </td>
-                  <td className={cellClass}>
-                    {formatCOP(product.pricing.suggestedSalePrice)}
-                  </td>
-                  <td className={cellClass}>
-                    <span
-                      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${
-                        product.stockQuantity <= 0 || !product.inStock
-                          ? 'bg-red-100 text-red-800 border-red-200'
-                          : product.stockQuantity < 5
-                            ? 'bg-amber-100 text-amber-800 border-amber-200'
-                            : 'bg-emerald-100 text-emerald-800 border-emerald-200'
-                      }`}
-                    >
-                      {product.stockQuantity <= 0 || !product.inStock
-                        ? 'Agotado (0)'
-                        : product.stockQuantity < 5
-                          ? `Stock Bajo (${product.stockQuantity})`
-                          : `Disponible (${product.stockQuantity})`}
-                    </span>
-                  </td>
-                  <td className={`${cellClass} text-right`}>
-                    <div className="flex justify-end gap-2">
-                      {product.dropiId && (
-                        <button
-                          type="button"
-                          onClick={() => handleSyncProduct(product.id)}
-                          disabled={syncingProductId === product.id}
-                          className="rounded-md border border-sky-300 px-3 py-1.5 text-xs font-medium text-sky-700 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-60"
+              {products.map((product) => {
+                const hasVariations = product.variations && product.variations.length > 0;
+                const isExpanded = expandedProductIds.has(product.id);
+
+                return (
+                  <Fragment key={product.id}>
+                    <tr className="hover:bg-slate-50">
+                      <td className="px-3 py-3 text-center">
+                        {hasVariations ? (
+                          <button
+                            type="button"
+                            onClick={() => toggleExpandProduct(product.id)}
+                            className="inline-flex h-6 w-6 items-center justify-center rounded text-slate-500 hover:bg-slate-200"
+                            title={isExpanded ? 'Ocultar variaciones' : 'Ver variaciones'}
+                          >
+                            <span className="text-xs">{isExpanded ? '▼' : '▶'}</span>
+                          </button>
+                        ) : (
+                          <span className="text-slate-300">—</span>
+                        )}
+                      </td>
+                      <td className={`${cellClass} font-medium text-slate-900`}>
+                        <div className="flex flex-col">
+                          <span>{product.name}</span>
+                          {hasVariations && (
+                            <span className="text-xs font-normal text-slate-500">
+                              {product.variations.length} variante{product.variations.length === 1 ? '' : 's'}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className={cellClass}>
+                        {product.supplier?.name ?? '—'}
+                      </td>
+                      <td className={cellClass}>
+                        {formatCOP(product.supplierPrice)}
+                      </td>
+                      <td className={cellClass}>
+                        {formatCOP(product.pricing.calculatedProfit)}
+                      </td>
+                      <td className={cellClass}>
+                        {formatCOP(product.pricing.suggestedSalePrice)}
+                      </td>
+                      <td className={cellClass}>
+                        <span
+                          className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${
+                            product.stockQuantity <= 0 || !product.inStock
+                              ? 'bg-red-100 text-red-800 border-red-200'
+                              : product.stockQuantity < 5
+                                ? 'bg-amber-100 text-amber-800 border-amber-200'
+                                : 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                          }`}
                         >
-                          {syncingProductId === product.id ? 'Sincronizando…' : 'Sync Dropi'}
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => handleToggleStock(product.id)}
-                        className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                      >
-                        Alternar Stock
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditing(product)}
-                        className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeleting(product)}
-                        className="rounded-md border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
-                      >
-                        Eliminar
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                          {product.stockQuantity <= 0 || !product.inStock
+                            ? 'Agotado (0)'
+                            : product.stockQuantity < 5
+                              ? `Stock Bajo (${product.stockQuantity})`
+                              : `Disponible (${product.stockQuantity})`}
+                        </span>
+                      </td>
+                      <td className={`${cellClass} text-right`}>
+                        <div className="flex justify-end gap-2">
+                          {product.dropiId && (
+                            <button
+                              type="button"
+                              onClick={() => handleSyncProduct(product.id)}
+                              disabled={syncingProductId === product.id}
+                              className="rounded-md border border-sky-300 px-3 py-1.5 text-xs font-medium text-sky-700 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {syncingProductId === product.id ? 'Sincronizando…' : 'Sync Dropi'}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleToggleStock(product.id)}
+                            className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                          >
+                            Alternar Stock
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditing(product)}
+                            className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeleting(product)}
+                            className="rounded-md border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    {isExpanded && hasVariations && (
+                      <tr className="bg-slate-50/70">
+                        <td colSpan={8} className="px-6 py-3">
+                          <div className="rounded-md border border-slate-200 bg-white p-3">
+                            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                              Variaciones de {product.name}
+                            </h4>
+                            <table className="min-w-full divide-y divide-slate-100 text-xs">
+                              <thead>
+                                <tr className="text-slate-500">
+                                  <th className="py-1.5 text-left font-medium">Nombre / Atributos</th>
+                                  <th className="py-1.5 text-left font-medium">SKU / ID Dropi</th>
+                                  <th className="py-1.5 text-left font-medium">P. Proveedor</th>
+                                  <th className="py-1.5 text-left font-medium">Utilidad</th>
+                                  <th className="py-1.5 text-left font-medium">P. Venta Sugerido</th>
+                                  <th className="py-1.5 text-left font-medium">Stock</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-50">
+                                {product.variations.map((v) => (
+                                  <tr key={v.id} className="hover:bg-slate-50">
+                                    <td className="py-2 text-slate-900 font-medium">
+                                      {v.name}
+                                      {v.attributes && Object.keys(v.attributes).length > 0 && (
+                                        <div className="text-[11px] text-slate-500">
+                                          {Object.entries(v.attributes)
+                                            .map(([key, val]) => `${key}: ${val}`)
+                                            .join(' | ')}
+                                        </div>
+                                      )}
+                                    </td>
+                                    <td className="py-2 text-slate-600">
+                                      {v.sku ?? '—'}
+                                      {v.dropiVariationId && (
+                                        <span className="block text-[10px] text-slate-400">
+                                          Dropi ID: {v.dropiVariationId}
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="py-2 text-slate-700">
+                                      {formatCOP(v.supplierPrice ?? product.supplierPrice)}
+                                    </td>
+                                    <td className="py-2 text-slate-700">
+                                      {formatCOP(v.pricing.calculatedProfit)}
+                                    </td>
+                                    <td className="py-2 font-medium text-slate-900">
+                                      {formatCOP(v.pricing.suggestedSalePrice)}
+                                    </td>
+                                    <td className="py-2">
+                                      <span
+                                        className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+                                          v.stockQuantity <= 0
+                                            ? 'bg-red-100 text-red-800 border-red-200'
+                                            : v.stockQuantity < 5
+                                              ? 'bg-amber-100 text-amber-800 border-amber-200'
+                                              : 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                                        }`}
+                                      >
+                                        {v.stockQuantity <= 0
+                                          ? 'Agotado (0)'
+                                          : v.stockQuantity < 5
+                                            ? `Stock Bajo (${v.stockQuantity})`
+                                            : `Disponible (${v.stockQuantity})`}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
               {products.length === 0 && (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={8}
                     className="px-4 py-8 text-center text-sm text-slate-500"
                   >
                     {filtersActive ? (

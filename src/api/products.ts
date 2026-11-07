@@ -14,6 +14,22 @@ export interface ProductSupplier {
   contactInfo: string | null;
 }
 
+export interface ProductVariation {
+  id: string;
+  productId: string;
+  dropiVariationId: string | null;
+  sku: string | null;
+  name: string;
+  attributes: Record<string, string> | null;
+  stockQuantity: number;
+  supplierPrice: number | null;
+  stockStatus: 'in_stock' | 'low_stock' | 'out_of_stock';
+  isActive: boolean;
+  pricing: ProductPricing;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Product {
   id: string;
   supplierId: string;
@@ -26,9 +42,21 @@ export interface Product {
   stockStatus: 'in_stock' | 'low_stock' | 'out_of_stock';
   isActive: boolean;
   pricing: ProductPricing;
+  variations: ProductVariation[];
   supplier?: ProductSupplier;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ProductVariationInput {
+  id?: string;
+  dropiVariationId?: string | null;
+  sku?: string | null;
+  name: string;
+  attributes?: Record<string, string> | null;
+  stockQuantity?: number;
+  supplierPrice?: number | null;
+  isActive?: boolean;
 }
 
 export interface CreateProductDTO {
@@ -37,6 +65,9 @@ export interface CreateProductDTO {
   supplierPrice: number;
   dropiId?: string | null;
   details?: string | null;
+  stockQuantity?: number;
+  isActive?: boolean;
+  variations?: ProductVariationInput[];
 }
 
 export interface ProductFilterParams {
@@ -51,6 +82,9 @@ export interface UpdateProductDTO {
   supplierPrice?: number;
   dropiId?: string | null;
   details?: string | null;
+  stockQuantity?: number;
+  isActive?: boolean;
+  variations?: ProductVariationInput[];
 }
 
 export async function listProducts(

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { updateProduct } from '../api/products';
-import type { Product } from '../api/products';
+import type { Product, ProductVariationInput } from '../api/products';
 import type { Supplier } from '../api/suppliers';
 import { getErrorMessage } from '../api/client';
 
@@ -25,8 +25,42 @@ export default function EditProductModal({
   );
   const [dropiId, setDropiId] = useState(product.dropiId ?? '');
   const [details, setDetails] = useState(product.details ?? '');
+  const [variations, setVariations] = useState<ProductVariationInput[]>(
+    product.variations?.map((v) => ({
+      id: v.id,
+      dropiVariationId: v.dropiVariationId,
+      sku: v.sku,
+      name: v.name,
+      attributes: v.attributes,
+      stockQuantity: v.stockQuantity,
+      supplierPrice: v.supplierPrice,
+      isActive: v.isActive,
+    })) || []
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function handleAddVariation() {
+    setVariations((prev) => [
+      ...prev,
+      {
+        name: `Variante ${prev.length + 1}`,
+        sku: '',
+        stockQuantity: 0,
+        supplierPrice: undefined,
+      },
+    ]);
+  }
+
+  function handleRemoveVariation(index: number) {
+    setVariations((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function handleVariationChange(index: number, field: keyof ProductVariationInput, value: unknown) {
+    setVariations((prev) =>
+      prev.map((v, i) => (i === index ? { ...v, [field]: value } : v))
+    );
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -52,6 +86,18 @@ export default function EditProductModal({
       return;
     }
 
+    for (let i = 0; i < variations.length; i++) {
+      const v = variations[i];
+      if (!v.name.trim()) {
+        setError(`El nombre de la variante #${i + 1} no puede estar vacío.`);
+        return;
+      }
+      if (v.supplierPrice !== undefined && v.supplierPrice !== null && v.supplierPrice <= 0) {
+        setError(`El precio de la variante #${i + 1} debe ser mayor que 0.`);
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
       const updated = await updateProduct(product.id, {
@@ -60,6 +106,7 @@ export default function EditProductModal({
         supplierPrice: price,
         dropiId: dropiId.trim() ? dropiId.trim() : null,
         details: details.trim() ? details.trim() : null,
+        variations,
       });
       onSuccess(updated);
       onClose();
@@ -84,7 +131,7 @@ export default function EditProductModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl"
+        className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-lg bg-white p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="mb-4 text-lg font-semibold text-slate-900">
@@ -125,14 +172,13 @@ export default function EditProductModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               className={inputClass}
-              maxLength={200}
               required
             />
           </div>
 
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">
-              Precio Proveedor (COP)
+              Precio Proveedor Base (COP)
             </label>
             <input
               type="number"
@@ -168,6 +214,95 @@ export default function EditProductModal({
               rows={3}
               className={inputClass}
             />
+          </div>
+
+          <div className="border-t border-slate-100 pt-4">
+            <div className="mb-2 flex items-center justify-between">
+              <label className="text-sm font-medium text-slate-800">
+                Variaciones <span className="text-slate-400">({variations.length})</span>
+              </label>
+              <button
+                type="button"
+                onClick={handleAddVariation}
+                className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+              >
+                + Añadir Variante
+              </button>
+            </div>
+
+            {variations.length === 0 ? (
+              <p className="text-xs text-slate-500">
+                No hay variaciones configuradas para este producto.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {variations.map((v, idx) => (
+                  <div key={idx} className="rounded-md border border-slate-200 bg-slate-50 p-3 text-xs">
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="font-semibold text-slate-700">Variante #{idx + 1}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveVariation(idx)}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="mb-1 block text-slate-600">Nombre / Título</label>
+                        <input
+                          type="text"
+                          value={v.name}
+                          onChange={(e) => handleVariationChange(idx, 'name', e.target.value)}
+                          placeholder="p. ej. M / Rojo"
+                          className={inputClass}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-slate-600">SKU</label>
+                        <input
+                          type="text"
+                          value={v.sku ?? ''}
+                          onChange={(e) => handleVariationChange(idx, 'sku', e.target.value || null)}
+                          placeholder="SKU-001"
+                          className={inputClass}
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-slate-600">Stock</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={v.stockQuantity ?? 0}
+                          onChange={(e) => handleVariationChange(idx, 'stockQuantity', Number(e.target.value))}
+                          className={inputClass}
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-slate-600">Precio Proveedor (Override)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="100"
+                          value={v.supplierPrice ?? ''}
+                          onChange={(e) =>
+                            handleVariationChange(
+                              idx,
+                              'supplierPrice',
+                              e.target.value ? Number(e.target.value) : undefined
+                            )
+                          }
+                          placeholder="Hereda del producto"
+                          className={inputClass}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end gap-3 border-t border-slate-100 pt-4">
